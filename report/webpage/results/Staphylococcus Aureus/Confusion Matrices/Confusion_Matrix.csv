@@ -1,0 +1,7 @@
+Drug,TN,FP,FN,TP
+Erythromycin,350,65,57,61
+Methicillin,170,63,2,93
+Ciprofloxacin,340,85,24,41
+Clindamycin,212,78,37,45
+Penicillin,76,17,49,265
+Total,1148,308,169,505

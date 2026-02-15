@@ -1,0 +1,2262 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Species-agnostic and Salmonella-specific Models for AMR Prediction Using FCGR and ResNet-18</title>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@400;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <style>
+
+        /* Extra Mobile Optimizations */
+        @media (max-width: 600px) {
+          /* Make tables more compact */
+          .data-table th,
+          .data-table td {
+            padding: 0.6rem;
+            font-size: 0.8rem;
+            white-space: normal;
+            word-break: break-word;
+          }
+        
+          /* Force scroll for very wide tables */
+          .table-scrollable {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+        
+          /* Card-style tables for better readability */
+          .data-table,
+          .data-table thead,
+          .data-table tbody,
+          .data-table th,
+          .data-table td,
+          .data-table tr {
+            display: block;
+          }
+        
+          .data-table thead {
+            display: none; /* Hide header row */
+          }
+        
+          .data-table tr {
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.5rem;
+            background: var(--card-bg);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+          }
+        
+          .data-table td {
+            border: none;
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0.8rem;
+            font-size: 0.85rem;
+          }
+        
+          .data-table td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: var(--text-secondary);
+            flex: 1;
+            padding-right: 1rem;
+            text-align: left;
+          }
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary-color: #1a4e8a;
+            --primary-dark: #0f3461;
+            --accent-color: #2e7d32;
+            --warning-color: #d84315;
+            --bg-color: #fafafa;
+            --card-bg: #ffffff;
+            --text-primary: #263238;
+            --text-secondary: #546e7a;
+            --border-color: #e0e0e0;
+            --dna-color: rgba(26, 78, 138, 0.03);
+            --salmonella-color: #8e24aa;
+            --general-color: #1565c0;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        /* Scientific Background Pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(26, 78, 138, 0.02) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(46, 125, 50, 0.02) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(26, 78, 138, 0.01) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        /* DNA Helix Animation */
+        @keyframes dnaFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+        
+        .dna-decoration {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+            opacity: 0.03;
+        }
+        
+        .dna-strand {
+            position: absolute;
+            width: 2px;
+            height: 100px;
+            background: linear-gradient(180deg, 
+                var(--primary-color) 0%, 
+                transparent 20%, 
+                var(--primary-color) 40%, 
+                transparent 60%, 
+                var(--primary-color) 80%, 
+                transparent 100%);
+            animation: dnaFloat 20s ease-in-out infinite;
+        }
+        
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .nav-logo {
+            font-family: 'Source Serif Pro', serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--primary-dark);
+            letter-spacing: -0.5px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2.5rem;
+            list-style: none;
+        }
+        
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: color 0.2s ease;
+            letter-spacing: 0.2px;
+        }
+        
+        .nav-links a:hover {
+            color: var(--primary-color);
+        }
+        
+        /* Hero Section */
+        .hero {
+            margin-top: 60px;
+            padding: 5rem 2rem 4rem;
+            background: linear-gradient(180deg, 
+                rgba(255,255,255,0) 0%, 
+                rgba(26, 78, 138, 0.02) 100%);
+            position: relative;
+        }
+        
+        .hero-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero h1 {
+            font-family: 'Source Serif Pro', serif;
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--primary-dark);
+            line-height: 1.2;
+            letter-spacing: -1px;
+        }
+        
+        .hero-authors {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-style: italic;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .hero-affiliation {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .abstract-section {
+            margin-top: 2rem;
+        }
+        
+        .abstract-label {
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+        
+        .hero-description {
+            font-size: 1.05rem;
+            line-height: 1.8;
+            color: var(--text-primary);
+            max-width: 900px;
+            text-align: justify;
+        }
+        
+        .key-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 3rem;
+            padding: 2rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+        
+        /* Model Type Indicators */
+        .key-metrics.salmonella {
+            border-left: 5px solid var(--salmonella-color);
+        }
+        
+        .key-metrics.general {
+            border-left: 5px solid var(--general-color);
+        }
+        
+        .metric-item {
+            padding: 1rem;
+            border-left: 3px solid var(--primary-color);
+            padding-left: 1.5rem;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-dark);
+            font-family: 'Source Serif Pro', serif;
+        }
+        
+        .metric-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Quick Access Links */
+        .quick-access {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .access-button {
+            display: inline-flex;
+            align-items: center;
+            padding: 1rem 2rem;
+            background: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .access-button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .access-button.secondary {
+            background: var(--accent-color);
+        }
+
+        .access-button.secondary:hover {
+            background: #1b5e20;
+        }
+
+        .access-button.tertiary {
+            background: white;
+            color: var(--primary-color);
+            border: 2px solid var(--primary-color);
+        }
+
+        .access-button.tertiary:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        /* Section Styles */
+        section {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .section-header {
+            margin-bottom: 3rem;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 1rem;
+        }
+        
+        .section-title {
+            font-family: 'Source Serif Pro', serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-dark);
+            letter-spacing: -0.5px;
+        }
+        
+        .section-subtitle {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+        
+        /* Model Type Sections */
+        .model-section {
+            margin: 4rem 0;
+            padding: 2rem;
+            border-radius: 8px;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+        }
+        
+        .model-section.salmonella {
+            border-left: 5px solid var(--salmonella-color);
+            background: linear-gradient(135deg, rgba(142, 36, 170, 0.02) 0%, rgba(255,255,255,1) 100%);
+        }
+        
+        .model-section.general {
+            border-left: 5px solid var(--general-color);
+            background: linear-gradient(135deg, rgba(21, 101, 192, 0.02) 0%, rgba(255,255,255,1) 100%);
+        }
+        
+        .model-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .model-title.salmonella {
+            color: var(--salmonella-color);
+        }
+        
+        .model-title.general {
+            color: var(--general-color);
+        }
+        
+        .model-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .model-badge.salmonella {
+            background: rgba(142, 36, 170, 0.1);
+            color: var(--salmonella-color);
+        }
+        
+        .model-badge.general {
+            background: rgba(21, 101, 192, 0.1);
+            color: var(--general-color);
+        }
+        
+        /* Scientific Figure Style */
+        .figure-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 2.5rem;
+            margin: 3rem 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .figure-container h3 {
+            color: var(--primary-dark);
+            margin-bottom: 2rem;
+            font-size: 1.3rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+        
+        .figure-caption {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid var(--border-color);
+            line-height: 1.6;
+            background: rgba(0,0,0,0.02);
+            padding: 1.5rem;
+            border-radius: 4px;
+        }
+        
+        .figure-caption strong {
+            color: var(--primary-dark);
+        }
+        
+        /* Smart Table Styles */
+        .table-wrapper {
+            margin: 2rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .table-header {
+            background: var(--primary-dark);
+            color: white;
+            padding: 1rem;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        
+        .table-scrollable {
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg);
+            min-width: 600px;
+        }
+        
+        .data-table thead {
+            background: var(--primary-color);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .data-table th {
+            white-space: normal;
+            /* word-break: break-word; */
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            border-right: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .data-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            font-size: 0.95rem;
+        }
+        
+        .data-table tbody tr:hover {
+            background: rgba(26, 78, 138, 0.02);
+        }
+        
+        .data-table tbody tr:nth-child(even) {
+            background: rgba(0,0,0,0.01);
+        }
+        
+        /* Transposed table for narrow tables */
+        .transposed-table {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .transposed-row {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            align-items: center;
+        }
+        
+        .transposed-row:nth-child(even) {
+            background: rgba(0,0,0,0.01);
+        }
+        
+        .transposed-label {
+            font-weight: 600;
+            color: var(--primary-dark);
+            padding-right: 1rem;
+            border-right: 2px solid var(--border-color);
+        }
+        
+        .transposed-value {
+            padding-left: 1rem;
+        }
+        
+        /* Species Grid */
+        .species-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .species-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            transition: box-shadow 0.2s ease;
+            border-radius: 8px;
+        }
+        
+        .species-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .species-name {
+            font-style: italic;
+            font-size: 1.1rem;
+            color: var(--primary-dark);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        
+        .species-stats {
+            display: grid;
+            gap: 0.5rem;
+        }
+        
+        .species-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .species-stat label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        .species-stat value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        /* Methods Section */
+        .methodology-flow {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+        
+        .method-step {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-top: 4px solid var(--primary-color);
+            position: relative;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .method-step::after {
+            content: '→';
+            position: absolute;
+            right: -1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.5rem;
+            color: var(--border-color);
+        }
+        
+        .method-step:last-child::after {
+            display: none;
+        }
+        
+        .method-step h4 {
+            color: var(--primary-dark);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        .method-step p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        /* Image Grid */
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .image-item {
+            text-align: center;
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .image-item img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            min-height: 300px;
+            object-fit: contain;
+            background: white;
+        }
+        
+        .image-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-style: italic;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        /* Results Section */
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .result-card {
+            background: var(--card-bg);
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .result-card h4 {
+            color: var(--primary-dark);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        /* Publications Links */
+        .publication-links {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .pub-link {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            background: var(--primary-dark);
+            color: white;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background 0.2s ease;
+            border: 1px solid var(--primary-dark);
+            border-radius: 4px;
+        }
+        
+        .pub-link:hover {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .pub-link.secondary {
+            background: white;
+            color: var(--primary-dark);
+            border: 1px solid var(--primary-dark);
+        }
+        
+        .pub-link.secondary:hover {
+            background: var(--bg-color);
+        }
+        
+        /* Computational Resources */
+        .resources-table {
+            width: 100%;
+            margin: 2rem 0;
+        }
+        
+        .resources-table a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        
+        .resources-table a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Team Section */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        
+        .team-member {
+            background: var(--card-bg);
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .member-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin-bottom: 0.5rem;
+        }
+        
+        .member-role {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+        
+        .member-bio {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+        }
+        
+        .member-links {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .member-links a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--primary-color);
+            transition: all 0.2s ease;
+            border-radius: 4px;
+        }
+        
+        .member-links a:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--primary-dark);
+            color: white;
+            padding: 3rem 2rem;
+            margin-top: 6rem;
+        }
+        
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        .footer-institution {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .footer-copyright {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 1rem;
+        }
+        
+        .footer-links {
+            margin-top: 2rem;
+        }
+        
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+            margin: 0 1rem;
+            opacity: 0.8;
+            transition: opacity 0.2s ease;
+        }
+        
+        .footer-links a:hover {
+            opacity: 1;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .key-metrics {
+                grid-template-columns: 1fr;
+            }
+            
+            .methodology-flow {
+                grid-template-columns: 1fr;
+            }
+            
+            .method-step::after {
+                display: none;
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .image-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .quick-access {
+                flex-direction: column;
+            }
+            
+            .transposed-row {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            
+            .transposed-label {
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                padding-bottom: 0.5rem;
+                margin-bottom: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dna-decoration">
+        <div class="dna-strand" style="left: 10%; top: 20%;"></div>
+        <div class="dna-strand" style="left: 85%; top: 40%; animation-delay: 5s;"></div>
+        <div class="dna-strand" style="left: 45%; top: 60%; animation-delay: 10s;"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <div class="nav-logo">AMR Prediction Research</div>
+            <ul class="nav-links">
+                <li><a href="#abstract">Abstract</a></li>
+                <li><a href="#methods">Methods</a></li>
+                <li><a href="#results">Results</a></li>
+                <li><a href="#data">Data</a></li>
+                <li><a href="#resources">Resources</a></li>
+                <li><a href="#team">Team</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="abstract">
+        <div class="hero-content">
+            <h1>Antimicrobial Resistance Prediction in Salmonella enterica Using Frequency Chaos Game Representation and ResNet-18</h1>
+            <p class="hero-authors">Saifelden M. Ismail, Salma H. Fayed</p>
+            
+            <div class="abstract-section">
+                <div class="abstract-label">Abstract</div>
+                <p class="hero-description">
+                    Antimicrobial resistance (AMR) prediction from bacterial genomes remains a major challenge for clinical microbiology
+                    and surveillance. We developed deep learning models based on <strong>Frequency Chaos Game Representation (FCGR)</strong> and a
+                    <strong>ResNet-18 architecture</strong> to classify resistance phenotypes directly from whole-genome assemblies. Using homology-aware
+                    clustering to prevent genomic data leakage, we trained and evaluated models for <strong><em>Salmonella enterica</em>
+                    (seven antibiotics)</strong> and <strong><em>Staphylococcus aureus</em> (five antibiotics)</strong>. The <em>Salmonella enterica</em> model
+                    achieved high predictive accuracy, particularly for cephalosporins, while performance was lower for tetracycline and
+                    ampicillin. The <em>Staphylococcus aureus</em> model demonstrated that the pipeline generalizes to Gram-positive bacteria,
+                    with strong results for methicillin (Balanced Accuracy = 0.85).  Benchmarking against the gene-based tool ResFinder showed 
+                    that the FCGR-based model did not match the performance of ResFinder on most antibiotics, but achieved competitive results
+                    for cephalosporins. This study demonstrates the feasibility of applying FCGR-based deep learning to AMR prediction across
+                    bacterial species, though substantial improvements would be needed before clinical application.
+                </p>
+            </div>
+
+            <!-- Quick Access Links -->
+            <div class="quick-access">
+                <a href="https://doi.org/10.1101/2025.09.13.675356" class="access-button">Read Preprint (bioRxiv)</a>
+                <a href="https://huggingface.co/spaces/fcgr-amr-project/fcgr-amr-project" class="access-button secondary">Try Interactive Demo</a>
+                <a href="https://github.com/XHCFS/amr-fgcr-prediction-project" class="access-button tertiary">View Code & Data</a>
+            </div>
+            
+            <div class="key-metrics salmonella" style="margin-bottom:2rem;">
+              <h3 style="grid-column: 1 / -1; font-size:1.2rem; color:var(--salmonella-color); margin-bottom:1rem;">
+                Salmonella Enterica Model
+              </h3>
+              <div class="metric-item">
+                <div class="metric-value">5,084</div>
+                <div class="metric-label">Genomes</div>
+              </div>
+              <div class="metric-item">
+                <div class="metric-value">7</div>
+                <div class="metric-label">Antibiotics Tested</div>
+              </div>
+              <div class="metric-item">
+                <div class="metric-value">86%</div>
+                <div class="metric-label">Overall Balanced Accuracy</div>
+              </div>
+              <div class="metric-item">
+                <div class="metric-value">89%</div>
+                <div class="metric-label">Overall AUC</div>
+              </div>
+            </div>
+            
+            <div class="key-metrics general">
+              <h3 style="grid-column: 1 / -1; font-size:1.2rem; color:var(--general-color); margin-bottom:1rem;">
+                Staphylococcus Aureus Model
+              </h3>
+              <div class="metric-item">
+                <div class="metric-value">5,883</div>
+                <div class="metric-label">Genomes</div>
+              </div>
+              <div class="metric-item">
+                <div class="metric-value">5</div>
+                <div class="metric-label">Antibiotics Tested</div>
+              </div>
+              <div class="metric-item">
+                <div class="metric-value">74%</div>
+                <div class="metric-label">Overall Balanced Accuracy</div>
+              </div>
+              <div class="metric-item">
+                <div class="metric-value">82%</div>
+                <div class="metric-label">Overall AUC</div>
+              </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Methods Section -->
+    <section id="methods">
+      <div class="section-header">
+        <h2 class="section-title">Materials and Methods</h2>
+        <p class="section-subtitle">
+          Comprehensive pipeline from genomic data to resistance predictions
+        </p>
+      </div>
+    
+      <!-- Pipeline overview -->
+      <div class="methodology-flow">
+        <div class="method-step">
+          <h4>1. Data Collection</h4>
+          <p>
+            Whole genome sequences were curated from NCBI and public repositories with
+            validated phenotypic resistance profiles. Drugs selection was based on the 
+            labels Null% and Sensitive (S) to Resistant (R) ratio. Samples with no labels 
+            for selected drugs were excluded.
+          </p>
+        </div>
+        <div class="method-step">
+          <h4>2. FCGR Encoding</h4>
+          <p>
+            Genomes were transformed into 256×256 grayscale images using 8-mer
+            frequency analysis. This alignment-free encoding captures both local
+            sequence motifs and global compositional biases.
+          </p>
+        </div>
+        <div class="method-step">
+          <h4>3. Model Training</h4>
+          <p>
+            A modified ResNet-18 architecture was trained with homology-aware
+            splitting and cross-validation. Two models were developed: (i)
+            <em>Salmonella</em> model across 7 antibiotics, and (ii) a
+            <em>S. aureus</em> model across 5 antibiotics.
+          </p>
+        </div>
+        <div class="method-step">
+          <h4>4. Validation</h4>
+          <p>
+            Evaluation metrics included AUC, MCC, and balanced accuracy to account for
+            incomplete resistance profiles. Confusion matrices and per-class metrics
+            were generated for both models.
+          </p>
+        </div>
+      </div>
+    
+      <!-- FCGR Samples -->
+      <div class="figure-container">
+        <h3>Frequency Chaos Game Representation (FCGR) Examples</h3>
+        <div class="image-grid" id="fcgr-images"></div>
+        <div class="figure-caption">
+          <strong>Figure 1.</strong> Representative FCGR images for the two bacterial species showing distinct genomic signatures. 
+          Each image represents an 8-mer frequency pattern from whole genome sequences converted to 256×256 pixel grayscale images.
+          Upon inspection, <em>Salmonella</em> shows a more continuous pattern, while <em>Staphylococcus</em> exhibits a visually distinct blockier pattern.
+        </div>
+      </div>
+    
+      <!-- Exploratory Data Analysis Section -->
+       
+      <div class="model-section salmonella">
+        <div class="model-title salmonella">
+          <span>Salmonella enterica Model - Dataset Characteristics</span>
+          <span class="model-badge salmonella">Main Model</span>
+        </div>
+        
+        <div class="figure-container">
+            <h4>Missing Data Summary by Antibiotic</h4>
+
+            <div class="table-wrapper">
+                <div class="table-scrollable">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Antibiotic</th>
+                                <th>NULL Percentage (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Tetracycline</td>
+                                <td>0.00%</td>
+                            </tr>
+                            <tr>
+                                <td>Ampicillin</td>
+                                <td>0.00%</td>
+                            </tr>
+                            <tr>
+                                <td>Amoxicillin–Clavulanic acid</td>
+                                <td>0.00%</td>
+                            </tr>
+                            <tr>
+                                <td>Cefoxitin</td>
+                                <td>0.00%</td>
+                            </tr>
+                            <tr>
+                                <td>Ceftiofur</td>
+                                <td>0.00%</td>
+                            </tr>
+                            <tr>
+                                <td>Gentamicin</td>
+                                <td>0.00%</td>
+                            </tr>
+                            <tr>
+                                <td>Ceftriaxone</td>
+                                <td>0.00%</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th>Overall NULL Percentage</th>
+                                <th>0.00%</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                No missing resistance labels were observed across the selected antibiotics.
+            </p>
+        </div>
+      </div>
+
+      <div class="model-section general">
+        <div class="model-title general">
+          <span>Staphylococcus Aureus Model - Dataset Characteristics</span>
+          <span class="model-badge general">Supporting Model</span>
+        </div>
+
+        <div class="figure-container">
+            <h4>Missing Data Summary by Antibiotic</h4>
+
+            <div class="table-wrapper">
+                <div class="table-scrollable">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Antibiotic</th>
+                                <th>NULL Percentage (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Erythromycin</td>
+                                <td>17.75%</td>
+                            </tr>
+                            <tr>
+                                <td>Methicillin</td>
+                                <td>34.46%</td>
+                            </tr>
+                            <tr>
+                                <td>Ciprofloxacin</td>
+                                <td>23.19%</td>
+                            </tr>
+                            <tr>
+                                <td>Clindamycin</td>
+                                <td>39.47%</td>
+                            </tr>
+                            <tr>
+                                <td>Penicillin</td>
+                                <td>36.07%</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th>Overall NULL Percentage</th>
+                                <th>16.77%</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                Clindamycin (39.47%) and Penicillin (36.07%) exhibit the highest proportions of missing resistance labels, which may influence class balance and model reliability.
+            </p>
+        </div>
+
+      </div>
+    
+    
+      <!-- Correlation Matrices -->
+      <div class="figure-container">
+        <h3>Resistance Profile Correlation Matrices</h3>
+        <div class="image-grid" id="eda-images"></div>
+        <div class="figure-caption">
+          <strong>Figure 2.</strong> Correlation matrices of resistance profiles for each species dataset. 
+          These matrices reveal patterns of co-resistance and species-specific resistance profiles that inform model training strategies.
+          Strong correlations between cephalosporins in <em>Salmonella</em> explain the high performance achieved for these antibiotics.
+        </div>
+      </div>
+
+      <!-- Performance on Correlated Antibiotics -->
+      <div class="model-section salmonella">
+        <div class="model-title salmonella">
+          <span>Salmonella Enterica Model - Performance on Correlated Antibiotics</span>
+          <span class="model-badge salmonella">Main Model</span>
+        </div>
+        
+        <div class="figure-container">
+            <h4>Antibiotic Coverage and Performance Correlation</h4>
+            <p style="margin-bottom: 1.5rem; line-height: 1.6;">
+                The Salmonella dataset demonstrates strong correlation patterns between β-lactam antibiotics 
+                (cefoxitin, ceftiofur, and ceftriaxone), which is expected due to their shared resistance mechanisms. 
+                This correlation allows the model to leverage shared training signal across these drugs, 
+                contributing to their superior predictive performance.
+            </p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
+                <div style="padding: 1rem; background: rgba(142, 36, 170, 0.05); border-left: 3px solid var(--salmonella-color);">
+                    <strong>High Performance</strong><br>
+                    <small>Cefoxitin, Ceftiofur, Ceftriaxone<br>Balanced Accuracy ≥ 94%</small>
+                </div>
+                <div style="padding: 1rem; background: rgba(216, 67, 21, 0.05); border-left: 3px solid var(--warning-color);">
+                    <strong>Moderate Performance</strong><br>
+                    <small>Tetracycline, Ampicillin<br>Balanced Accuracy 71-79%</small>
+                </div>
+            </div>
+        </div>
+      </div>
+    </section>
+
+    
+    <!-- Results Section -->
+    <section id="results">
+      <div class="section-header">
+        <h2 class="section-title">Results and Discussion</h2>
+        <p class="section-subtitle">
+          Performance evaluation across species and antibiotics
+        </p>
+      </div>
+    
+      <!-- Overview cards -->
+      <div class="results-grid">
+        <div class="result-card">
+          <h4>Salmonella Enterica Model</h4>
+          <p>
+            The <em>Salmonella Enterica</em> model achieved strong overall performance with balanced accuracy of 86% and AUC of 89%. 
+            Performance varied significantly across antibiotics: near-perfect predictions for cephalosporins 
+            (cefoxitin, ceftiofur, ceftriaxone) with balanced accuracy ≥94%, while tetracycline and ampicillin 
+            showed more modest performance (71-79% balanced accuracy).
+          </p>
+        </div>
+        <div class="result-card">
+          <h4>Staphylococcus Aureus Model</h4>
+          <p>
+            The <em>Staphylococcus Aureus</em> model trained achieved balanced accuracy of 74% overall and AUC of 82%. 
+            Compared to <em>Salmonella Enterica</em> model, it achieves more modest performance,
+            but nevertheless demonstrates that the FCGR-based pipeline is not restricted to a single species and can 
+            capture resistance-associated genomic patterns in a fundamentally different bacterial lineage.
+          </p>
+        </div>
+      </div>
+    
+      <!-- Clinical implications -->
+      <div class="figure-container" style="margin-top: 2rem">
+        <h3>Clinical and Biological Implications</h3>
+        <p style="line-height: 1.8; margin-top: 1.5rem">
+          Our deep learning approach demonstrates significant clinical potential for rapid AMR screening. 
+          Benchmarking against ResFinder revealed that FCGR-based models can approach curated gene-database 
+          predictions while potentially capturing distributed genomic features beyond known resistance genes.
+          Saliency analysis showed that while the model recognizes established resistance genes like <em>blaCMY-2</em>, 
+          it relies on additional genomic motifs, suggesting potential for novel resistance mechanism discovery.
+        </p>
+        <ul style="margin-top: 1rem; padding-left: 2rem; line-height: 1.8">
+          <li>Reduction in diagnostic time from days to hours without requiring resistance gene annotations</li>
+          <li>Potential for discovering novel resistance mechanisms through distributed genomic patterns</li>
+          <li>Scalable deployment across diverse clinical and surveillance settings</li>
+        </ul>
+      </div>
+    
+
+      <!-- Salmonella Model Results -->
+      <div class="model-section salmonella">
+        <div class="model-title salmonella">
+          <span>Salmonella Enterica Model Performance Summary</span>
+          <span class="model-badge salmonella">Main Model</span>
+        </div>
+        
+        <div class="figure-container">
+            <h4>Test Set Performance by Antibiotic</h4>
+           <div class="table-wrapper">
+            <div class="table-scrollable">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Antibiotic</th>
+                            <th>Balanced Accuracy</th>
+                            <th>Precision</th>
+                            <th>Recall</th>
+                            <th>F1 Score</th>
+                            <th>ROC AUC</th>
+                            <th>MCC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Ceftiofur</td>
+                            <td>0.98</td>
+                            <td>1.00</td>
+                            <td>0.99</td>
+                            <td>0.99</td>
+                            <td>0.99</td>
+                            <td>0.92</td>
+                        </tr>
+                        <tr>
+                            <td>Ceftriaxone</td>
+                            <td>0.96</td>
+                            <td>1.00</td>
+                            <td>0.98</td>
+                            <td>0.98</td>
+                            <td>0.98</td>
+                            <td>0.84</td>
+                        </tr>
+                        <tr>
+                            <td>Cefoxitin</td>
+                            <td>0.94</td>
+                            <td>0.99</td>
+                            <td>0.99</td>
+                            <td>0.99</td>
+                            <td>0.95</td>
+                            <td>0.86</td>
+                        </tr>
+                        <tr>
+                            <td>Gentamicin</td>
+                            <td>0.86</td>
+                            <td>0.97</td>
+                            <td>0.99</td>
+                            <td>0.99</td>
+                            <td>0.97</td>
+                            <td>0.80</td>
+                        </tr>
+                        <tr>
+                            <td>Tetracycline</td>
+                            <td>0.79</td>
+                            <td>0.92</td>
+                            <td>0.66</td>
+                            <td>0.77</td>
+                            <td>0.90</td>
+                            <td>0.58</td>
+                        </tr>
+                        <tr>
+                            <td>Amoxicillin-Clavulanic Acid</td>
+                            <td>0.74</td>
+                            <td>0.92</td>
+                            <td>0.97</td>
+                            <td>0.95</td>
+                            <td>0.87</td>
+                            <td>0.57</td>
+                        </tr>
+                        <tr>
+                            <td>Ampicillin</td>
+                            <td>0.71</td>
+                            <td>0.83</td>
+                            <td>0.98</td>
+                            <td>0.90</td>
+                            <td>0.93</td>
+                            <td>0.55</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th>Overall</th>
+                            <th>0.86</th>
+                            <th>0.95</th>
+                            <th>0.94</th>
+                            <th>0.94</th>
+                            <th>0.94</th>
+                            <th>0.73</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        </div>
+
+        <div class="figure-container">
+            <h4>Cross-Validation Stability</h4>
+            <div class="table-wrapper">
+                <div class="table-scrollable">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Mean ± SD</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Balanced Accuracy</td>
+                                <td>0.81 ± 0.06</td>
+                            </tr>
+                            <tr>
+                                <td>Precision</td>
+                                <td>0.92 ± 0.03</td>
+                            </tr>
+                            <tr>
+                                <td>Recall</td>
+                                <td>0.90 ± 0.05</td>
+                            </tr>
+                            <tr>
+                                <td>F1 Score</td>
+                                <td>0.90 ± 0.05</td>
+                            </tr>
+                            <tr>
+                                <td>ROC AUC</td>
+                                <td>0.87 ± 0.05</td>
+                            </tr>
+                            <tr>
+                                <td>MCC</td>
+                                <td>0.58 ± 0.10</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      <!-- General Model Results -->
+      <div class="model-section general">
+        <div class="model-title general">
+          <span>Staphylococcus Aureus Model Performance Summary</span>
+          <span class="model-badge general">Supporting Model</span>
+        </div>
+
+        <div class="figure-container">
+            <h4>Test Set Performance by Antibiotic</h4>
+            <div class="table-wrapper">
+                <div class="table-scrollable">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Antibiotic</th>
+                                <th>Balanced Accuracy</th>
+                                <th>Precision</th>
+                                <th>Recall</th>
+                                <th>F1 Score</th>
+                                <th>ROC AUC</th>
+                                <th>MCC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Erythromycin</td>
+                                <td>0.68</td>
+                                <td>0.86</td>
+                                <td>0.84</td>
+                                <td>0.85</td>
+                                <td>0.77</td>
+                                <td>0.35</td>
+                            </tr>
+                            <tr>
+                                <td>Methicillin</td>
+                                <td>0.85</td>
+                                <td>0.99</td>
+                                <td>0.73</td>
+                                <td>0.84</td>
+                                <td>0.96</td>
+                                <td>0.64</td>
+                            </tr>
+                            <tr>
+                                <td>Ciprofloxacin</td>
+                                <td>0.72</td>
+                                <td>0.93</td>
+                                <td>0.80</td>
+                                <td>0.86</td>
+                                <td>0.82</td>
+                                <td>0.33</td>
+                            </tr>
+                            <tr>
+                                <td>Clindamycin</td>
+                                <td>0.64</td>
+                                <td>0.85</td>
+                                <td>0.73</td>
+                                <td>0.79</td>
+                                <td>0.69</td>
+                                <td>0.25</td>
+                            </tr>
+                            <tr>
+                                <td>Penicillin</td>
+                                <td>0.83</td>
+                                <td>0.61</td>
+                                <td>0.82</td>
+                                <td>0.70</td>
+                                <td>0.89</td>
+                                <td>0.60</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th>Overall</th>
+                                <th>0.74</th>
+                                <th>0.85</th>
+                                <th>0.78</th>
+                                <th>0.81</th>
+                                <th>0.83</th>
+                                <th>0.44</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="figure-container">
+            <h4>Cross-Validation Performance</h4>
+            <div class="table-wrapper">
+                <div class="table-scrollable">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Mean ± SD</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Balanced Accuracy</td>
+                                <td>0.64 ± 0.04</td>
+                            </tr>
+                            <tr>
+                                <td>Precision</td>
+                                <td>0.59 ± 0.15</td>
+                            </tr>
+                            <tr>
+                                <td>Recall</td>
+                                <td>0.62 ± 0.11</td>
+                            </tr>
+                            <tr>
+                                <td>F1 Score</td>
+                                <td>0.57 ± 0.13</td>
+                            </tr>
+                            <tr>
+                                <td>ROC AUC</td>
+                                <td>0.70 ± 0.04</td>
+                            </tr>
+                            <tr>
+                                <td>MCC</td>
+                                <td>0.28 ± 0.06</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      <!-- Results Comparison -->
+      <div class="model-section general">
+        <div class="model-title general">
+          <span>Models Comparison Summary</span>
+          <span class="model-badge general">Supporting Models</span>
+        </div>
+
+        <div class="figure-container">
+            <h4>Model Comparison – Salmonella FCGR Models</h4>
+            <div class="table-wrapper">
+                <div class="table-scrollable">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Balanced Accuracy</th>
+                                <th>Precision</th>
+                                <th>Recall</th>
+                                <th>ROC AUC</th>
+                                <th>MCC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>7-mer FCGR</td>
+                                <td>0.87</td>
+                                <td>0.94</td>
+                                <td>0.92</td>
+                                <td>0.94</td>
+                                <td>0.63</td>
+                            </tr>
+                            <tr>
+                                <td>8-mer FCGR</td>
+                                <td>0.86</td>
+                                <td>0.95</td>
+                                <td>0.94</td>
+                                <td>0.94</td>
+                                <td>0.73</td>
+                            </tr>
+                            <tr>
+                                <td>6-mer FCGR</td>
+                                <td>0.84</td>
+                                <td>0.90</td>
+                                <td>0.92</td>
+                                <td>0.90</td>
+                                <td>0.56</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th>Salmonella 8-mer ResNet (Main Model)</th>
+                                <th>0.86</th>
+                                <th>0.95</th>
+                                <th>0.94</th>
+                                <th>0.94</th>
+                                <th>0.73</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="figure-container">
+            <h4>Model Comparison – Architectures / Species</h4>
+            <div class="table-wrapper">
+                <div class="table-scrollable">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Balanced Accuracy</th>
+                                <th>Precision</th>
+                                <th>Recall</th>
+                                <th>ROC AUC</th>
+                                <th>MCC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>EfficientNet</td>
+                                <td>0.85</td>
+                                <td>0.93</td>
+                                <td>0.90</td>
+                                <td>0.92</td>
+                                <td>0.58</td>
+                            </tr>
+                            <tr>
+                                <td>Staphylococcus Aureus Model</td>
+                                <td>0.74</td>
+                                <td>0.85</td>
+                                <td>0.78</td>
+                                <td>0.83</td>
+                                <td>0.44</td>
+                            </tr>
+                            <tr>
+                                <td>Simple CNN</td>
+                                <td>0.69</td>
+                                <td>0.93</td>
+                                <td>0.52</td>
+                                <td>0.81</td>
+                                <td>0.26</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th>Salmonella 8-mer ResNet (Main Model)</th>
+                                <th>0.86</th>
+                                <th>0.95</th>
+                                <th>0.94</th>
+                                <th>0.94</th>
+                                <th>0.73</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+      </div>
+
+    
+      <!-- Results Figures -->
+      <div class="figure-container">
+        <h3>Performance Visualization and Confusion Matrices</h3>
+        <div class="image-grid" id="results-images"></div>
+        <div class="figure-caption">
+          <strong>Figure 3.</strong> Model performance visualization including label coverage distributions and confusion matrices for both models.
+          Coverage plots show the distribution of resistance labels across the dataset, 
+          while confusion matrices demonstrate classification performance per antibiotic.
+        </div>
+      </div>
+    </section>
+
+    <!-- Data Section -->
+    <section id="data">
+        <div class="section-header">
+            <h2 class="section-title">Dataset and Data Sources</h2>
+            <p class="section-subtitle">Comprehensive genomic and phenotypic data compilation</p>
+        </div>
+
+        <div class="figure-container">
+            <h3>Data Sources and Project Information</h3>
+            <div class="table-wrapper">
+                <div class="table-header">Primary Data Sources</div>
+                <div class="table-scrollable">
+                    <table class="data-table resources-table">
+                        <thead>
+                            <tr>
+                                <th>Species</th>
+                                <th>Primary Source</th>
+                                <th>Project Number(s)</th>
+                                <th>Publication</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><em>Salmonella enterica</em></td>
+                                <td>JCM Journal</td>
+                                <td>PRJNA292661, PRJNA292666</td>
+                                <td><a href="https://doi.org/10.1128/jcm.01260-18">DOI: 10.1128/jcm.01260-18</a></td>
+                            </tr>
+                            <tr>
+                                <td><em>Staphylococcus aureus</em></td>
+                                <td>mSystems Journal</td>
+                                <td>Not specified</td>
+                                <td><a href="https://doi.org/10.1128/msystems.01185-20">DOI: 10.1128/msystems.01185-20</a></td>
+                            </tr>
+                            <tr>
+                                <td><em>Staphylococcus aureus</em></td>
+                                <td>Interpretable genomic space mapping</td>
+                                <td>Not specified</td>
+                                <td><a href="hhttps://doi.org/10.1002/minf.202300263">DOI: 10.1002/minf.202300263</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="figure-caption">
+                <strong>Table 1.</strong> Primary data sources for each of the two bacterial species included in the study, 
+                including original publications and NCBI project identifiers. All datasets were obtained from publicly available 
+                repositories and integrated using standardized phenotypic resistance classifications.
+            </div>
+        </div>
+
+        <div class="species-grid" style="margin-top: 3rem;">
+            <div class="species-card">
+                <div class="species-name">Data Processing Pipeline</div>
+                <div class="species-stats">
+                    <div class="species-stat">
+                        <label>Encoding Method:</label>
+                        <value>FCGR (8-mer, 256×256)</value>
+                    </div>
+                    <div class="species-stat">
+                        <label>Homology Clustering:</label>
+                        <value>Sourmash MinHash (95% similarity)</value>
+                    </div>
+                    <div class="species-stat">
+                        <label>Cross-Validation:</label>
+                        <value>5-fold GroupKFold</value>
+                    </div>
+                    <div class="species-stat">
+                        <label>Train/Test Split:</label>
+                        <value>~85% / ~15% (cluster-aware)</value>
+                    </div>
+                </div>
+            </div>
+            <div class="species-card">
+            <div class="species-name">Quality Control Metrics</div>
+            <div class="species-stats">
+              <div class="species-stat">
+                <label>Total Genomes:</label>
+                <value>10,967 across 2 species</value>
+              </div>
+              <div class="species-stat">
+                <label>Homology Method:</label>
+                <value>MinHash sketching (k=31)</value>
+              </div>
+              <div class="species-stat">
+                <label>Drug Selection:</label>
+                <value>Based on label completeness and clinical relevance</value>
+              </div>
+              <div class="species-stat">
+                <label>Missing Data Handling:</label>
+                <value>Masked evaluation for incomplete labels</value>
+              </div>
+            </div>
+            </div>
+        </div>
+
+        <div class="figure-container" style="margin-top: 2rem;">
+          <h3>Antibiotic Coverage</h3>
+          <p style="line-height: 1.8; margin: 1rem 0;">
+            Our dataset encompasses multiple antibiotics across different therapeutic classes. The Salmonella Enterica model 
+            covers 7 antibiotics including β-lactams. The Staphylococcus Aureus model is evaluated on 5 antibiotics and acts as
+            a supporting model for cross-species validation.
+          </p>
+
+          <div
+            style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                gap: 1rem;
+                margin-top: 1.5rem;
+            "
+            >
+
+            <!-- ================= SALMONELLA ================= -->
+
+            <div
+                style="
+                padding: 1rem;
+                background: var(--bg-color);
+                border-left: 3px solid var(--salmonella-color);
+                "
+            >
+                <strong>Tetracyclines</strong><br />
+                <small>Tetracycline</small>
+            </div>
+
+            <div
+                style="
+                padding: 1rem;
+                background: var(--bg-color);
+                border-left: 3px solid var(--salmonella-color);
+                "
+            >
+                <strong>Aminoglycosides</strong><br />
+                <small>Gentamicin</small>
+            </div>
+
+            <div
+                style="
+                padding: 1rem;
+                background: var(--bg-color);
+                border-left: 3px solid var(--salmonella-color);
+                "
+            >
+                <strong>Penicillins (β-lactams)</strong><br />
+                <small>Ampicillin, Amoxicillin–Clavulanic acid</small>
+            </div>
+
+            <div
+                style="
+                padding: 1rem;
+                background: var(--bg-color);
+                border-left: 3px solid var(--salmonella-color);
+                "
+            >
+                <strong>Cephalosporins</strong><br />
+                <small>Cefoxitin, Ceftiofur, Ceftriaxone</small>
+            </div>
+
+
+            <!-- ================= STAPH ================= -->
+
+            <div
+                style="
+                padding: 1rem;
+                background: var(--bg-color);
+                border-left: 3px solid var(--general-color);
+                "
+            >
+                <strong>Macrolides</strong><br />
+                <small>Erythromycin</small>
+            </div>
+
+            <div
+                style="
+                padding: 1rem;
+                background: var(--bg-color);
+                border-left: 3px solid var(--general-color);
+                "
+            >
+                <strong>β-lactams (Anti-staphylococcal)</strong><br />
+                <small>Methicillin, Penicillin</small>
+            </div>
+
+            <div
+                style="
+                padding: 1rem;
+                background: var(--bg-color);
+                border-left: 3px solid var(--general-color);
+                "
+            >
+                <strong>Fluoroquinolones</strong><br />
+                <small>Ciprofloxacin</small>
+            </div>
+
+            <div
+                style="
+                padding: 1rem;
+                background: var(--bg-color);
+                border-left: 3px solid var(--general-color);
+                "
+            >
+                <strong>Lincosamides</strong><br />
+                <small>Clindamycin</small>
+            </div>
+
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Resources Section -->
+    <section id="resources">
+        <div class="section-header">
+            <h2 class="section-title">Computational Resources</h2>
+            <p class="section-subtitle">Code, datasets, models, and interactive demonstrations</p>
+        </div>
+
+        <!-- Featured Links -->
+        <div class="species-grid" style="margin-bottom: 3rem;">
+            <div class="species-card">
+                <div class="species-name">Research Paper</div>
+                <div class="species-stats">
+                    <div class="species-stat">
+                        <label>Preprint Server:</label>
+                        <value>bioRxiv (forthcoming)</value>
+                    </div>
+                    <div class="species-stat">
+                        <label>Status:</label>
+                        <value>In preparation</value>
+                    </div>
+                    <div class="species-stat">
+                        <label>DOI:</label>
+                        <value>[To be assigned]</value>
+                    </div>
+                </div>
+                <div class="publication-links" style="margin-top: 1rem;">
+                    <a href="https://doi.org/10.1101/2025.09.13.675356" class="pub-link">Read on bioRxiv</a>
+                </div>
+            </div>
+            <div class="species-card">
+                <div class="species-name">Interactive Demo</div>
+                <div class="species-stats">
+                    <div class="species-stat">
+                        <label>Platform:</label>
+                        <value>Hugging Face Spaces</value>
+                    </div>
+                    <div class="species-stat">
+                        <label>Models Available:</label>
+                        <value>Both Salmonella Enterica & Staphylococcus Aureus</value>
+                    </div>
+                    <div class="species-stat">
+                        <label>Upload Format:</label>
+                        <value>FASTA genome sequences</value>
+                    </div>
+                </div>
+                <div class="publication-links" style="margin-top: 1rem;">
+                    <a href="https://huggingface.co/spaces/fcgr-amr-project/fcgr-amr-project" class="pub-link">Try Demo</a>
+                    <a href="https://huggingface.co/spaces/fcgr-amr-project/fcgr-amr-project" class="pub-link secondary">View on HF</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="figure-container">
+            <h3>Available Computational Resources</h3>
+            <div class="table-wrapper">
+                <div class="table-header">Code Repositories and Data Downloads</div>
+                <div class="table-scrollable">
+                    <table class="data-table resources-table">
+                        <thead>
+                            <tr>
+                                <th>Resource Type</th>
+                                <th>Description</th>
+                                <th>Access Link</th>
+                                <th>Format</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Complete Pipeline</td>
+                                <td>End-to-end pipeline from data download to model training</td>
+                                <td><a href="">GitHub Repository</a></td>
+                                <td>Jupyter Notebooks</td>
+                            </tr>
+                            <tr>
+                                <td>Dataset Download</td>
+                                <td>Automated scripts for downloading WGS data from NCBI/PATRIC</td>
+                                <td><a href="">Notebook</a></td>
+                                <td>Jupyter Notebook</td>
+                            </tr>
+                            <tr>
+                                <td>Master Table</td>
+                                <td>Compilation of processed features, labels, and metadata for analysis</td>
+                                <td><a href="">Notebook</a></td>
+                                <td>Jupyter Notebook</td>
+                            </tr>
+                            <tr>
+                                <td>Drug Selection & Filtering</td>
+                                <td>Filter and select relevant antibiotics for modeling</td>
+                                <td><a href="">Notebook</a></td>
+                                <td>Jupyter Notebook</td>
+                            </tr>
+                            <tr>
+                                <td>Exploratory Data Analysis</td>
+                                <td>Initial visualization and statistical exploration of datasets</td>
+                                <td><a href="">Notebook</a></td>
+                                <td>Jupyter Notebook</td>
+                            </tr>
+                            <tr>
+                                <td>FCGR Encoding</td>
+                                <td>Frequency Chaos Game Representation image generation (8-mer)</td>
+                                <td><a href="">Notebook</a></td>
+                                <td>Jupyter Notebook</td>
+                            </tr>
+                            <tr>
+                                <td>Selecting Split Parameters</td>
+                                <td>Choose optimal parameters for train/validation/test splits</td>
+                                <td><a href="">Notebook</a></td>
+                                <td>Jupyter Notebook</td>
+                            </tr>
+                            <tr>
+                                <td>Homology-Aware Clusters</td>
+                                <td>Sequence similarity clustering to prevent data leakage in splits</td>
+                                <td><a href="">Notebook</a></td>
+                                <td>Jupyter Notebook</td>
+                            </tr>
+                            <tr>
+                                <td>Model Training Pipeline</td>
+                                <td>ResNet-18 implementation with cross-validation and evaluation</td>
+                                <td><a href="">Notebook</a></td>
+                                <td>Jupyter Notebook</td>
+                            </tr>
+                            <tr>
+                                <td>Interpretability</td>
+                                <td>Model interpretation and visualization of learned features</td>
+                                <td><a href="">Notebook</a></td>
+                                <td>Jupyter Notebook</td>
+                            </tr>
+                            <tr>
+                                <td>ABRicate Prediction Generation</td>
+                                <td>Generate AMR predictions using ABRicate from genomic data</td>
+                                <td><a href="">Notebook</a></td>
+                                <td>Jupyter Notebook</td>
+                            </tr>
+                            <tr>
+                                <td>ResFinder Results Evaluation</td>
+                                <td>Evaluate gene-based baseline predictions using ResFinder database</td>
+                                <td><a href="">Notebook</a></td>
+                                <td>Jupyter Notebook</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+            </div>
+            <div class="figure-caption">
+                <strong>Table 2.</strong> Comprehensive list of computational resources supporting reproducible research. All notebooks include detailed documentation and can be executed in Google Colab environment. The complete pipeline supports both species-specific and species-agnostic model training.
+            </div>
+        </div>
+
+        <div class="methodology-flow" style="margin-top: 3rem;">
+            <div class="method-step">
+                <h4>Software Dependencies</h4>
+                <p><strong>Core Libraries:</strong> PyTorch v2.8.0, FastAI v2.8.4, Scikit-learn v1.6.1</p>
+                <p><strong>Bioinformatics:</strong> Sourmash v4.9.4, BioPython v1.85, ABRicate v1.0.1</p>
+                <p><strong>Visualization:</strong> Matplotlib v3.10.0, Seaborn v0.13.2, Plotly v5.24.1</p>
+            </div>
+            <div class="method-step">
+                <h4>Hardware Requirements</h4>
+                <p><strong>Training:</strong> Google Colab T4 GPU</p>
+                <p><strong>Specifications:</strong> 2 vCPUs @ 2.2GHz, 13GB RAM, 100GB storage</p>
+                <p><strong>Training Time:</strong> ~1 hour (general), ~30-40 min (species-specific)</p>
+            </div>
+            <div class="method-step">
+                <h4>Performance Metrics</h4>
+                <p><strong>Primary Metrics:</strong> Balanced Accuracy, ROC AUC, Matthews Correlation Coefficient</p>
+                <p><strong>Evaluation:</strong> Masked evaluation for missing labels, 5-fold cross-validation</p>
+                <p><strong>Baseline:</strong> ResFinder gene-based predictions for comparison</p>
+            </div>
+        </div>
+
+        <div class="publication-links">
+            <a href="https://github.com/XHCFS/amr-fgcr-prediction-project" class="pub-link">View Code Repository</a>
+            <a href="https://huggingface.co/spaces/fcgr-amr-project/fcgr-amr-project" class="pub-link secondary">Try Interactive Demo</a>
+        </div>
+    </section>
+
+    <!-- Team Section -->
+    <section id="team">
+        <div class="section-header">
+            <h2 class="section-title">Research Team</h2>
+                <p class="section-subtitle">
+                    Independent research conducted by Communications and Information Engineering students with extensive 
+                    machine learning and deep learning experience. The study combines computational methods with 
+                    bioinformatics approaches for antimicrobial resistance prediction.
+                </p>        
+        </div>
+
+        <div class="team-grid">
+            <div class="team-member">
+                <div class="member-name">Saifelden M. Ismail</div>
+                <div class="member-role">Lead Researcher & Corresponding Author</div>
+                <div class="member-bio">
+                    Senior-year Communications and Information Engineering student with broad interest in computer science, 
+                    systems programming, and bioinformatics applications. Contributed to study conception, framework design, 
+                    model training implementation, and manuscript preparation.
+                </div>
+                <div class="member-links">
+                    <a href="mailto:saifeldenmi@gmail.com">Contact</a>
+                    <a href="https://orcid.org/0009-0002-8867-6533">ORCID</a>
+                </div>
+            </div>
+            <div class="team-member">
+                <div class="member-name">Salma H. Fayed</div>
+                <div class="member-role">Co-Researcher</div>
+                <div class="member-bio">
+                    Senior-year Communications and Information Engineering student specializing in data science and machine learning applications. 
+                    Contributed to data collection, homology-aware splitting implementation, cross-validation setup, 
+                    results analysis, and manuscript preparation.
+                </div>
+                <div class="member-links">
+                    <a href="mailto:s-salma.hatem@zewailcity.edu.eg">Contact</a>
+                    <a href="https://orcid.org/0009-0005-9313-225X">ORCID</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="figure-container" style="margin-top: 3rem;">
+            <h3>Acknowledgments</h3>
+            <p style="line-height: 1.8;">
+                We thank Sama S. Eltaher (Zewail City University of Science and Technology) for providing biological insights 
+                and guidance on bioinformatics tools, which greatly supported this study. We also acknowledge our colleague 
+                Mariam I. Mohamed for valuable assistance with data collection. The research was conducted independently 
+                using publicly available datasets and open-source computational tools.
+            </p>
+            
+            <div style="margin-top: 2rem; padding: 1.5rem; background: var(--bg-color); border-left: 4px solid var(--primary-color);">
+                <h4 style="margin-bottom: 1rem; color: var(--primary-dark);">Research Impact</h4>
+                <p style="line-height: 1.8; margin-bottom: 1rem;">
+                    This work contributes to the global effort to combat antimicrobial resistance through innovative 
+                    computational approaches. By making our methods and data freely available, we aim to accelerate 
+                    research in this critical area of public health. The development of species-agnostic models 
+                    represents a step towards more generalizable AMR prediction tools for clinical and surveillance applications.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <div class="footer-content">
+        <div class="footer-institution">Independent Research Project</div>
+        <p>Conducted by <strong>Saifelden M. Ismail</strong> and <strong>Salma H. Fayed</strong></p>
+        <div class="footer-links">
+          <a href="mailto:saifeldenmi@gmail.com">Contact Research Team</a>
+          <a href="#resources">Research Ethics</a>
+          <a href="#data">Data Sharing Policy</a>
+          <a href="https://github.com/XHCFS/amr-fgcr-prediction-project">GitHub Repository</a>
+        </div>
+        <div class="footer-copyright">
+          © 2025 Saifelden M. Ismail &amp; Salma H. Fayed.  
+          This research is conducted under open science principles.  
+          All datasets and code are made freely available for scientific and educational purposes.
+        </div>
+      </div>
+    </footer>
+
+    <!-- JavaScript for Dynamic Content Loading -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script>
+      // FCGR Sample Images (placeholder functionality)
+      const fcgrImages = [
+        { file: "fcgr_samples/Salmonella enterica.png", label: "Salmonella enterica - continuous pattern" },
+        { file: "fcgr_samples/Staphylococcus aureus.png", label: "Staphylococcus aureus - distinct blockier pattern" },
+      ];
+      
+      const fcgrContainer = document.getElementById("fcgr-images");
+      fcgrImages.forEach((img) => {
+        const div = document.createElement("div");
+        div.classList.add("image-item");
+        div.innerHTML = `
+          <img src="${img.file}" alt="${img.label}" />
+          <p class="image-label">${img.label}</p>
+        `;
+        fcgrContainer.appendChild(div);
+      });
+
+      // Correlation matrices placeholder
+      const correlationImages = [
+        { file: "eda_results/Salmonella_Enterica_Correlation_Matrix.png", label: "Salmonella Enterica resistance correlations - strong β-lactam clustering" },
+        { file: "eda_results/Staphylococcus_Aureus_Correlation_Matrix.png", label: "Staphylococcus Aureus resistance correlations" },
+      ];
+      
+      const correlationContainer = document.getElementById("eda-images");
+      correlationImages.forEach((img) => {
+        const div = document.createElement("div");
+        div.classList.add("image-item");
+        div.innerHTML = `
+          <img src="${img.file}" alt="${img.label}" />
+          <p class="image-label">${img.label}</p>
+        `;
+        correlationContainer.appendChild(div);
+      });
+
+      // Results figures placeholder
+      const resultsFigures = [
+        { file: "results/Salmonella Enterica/8-mer/Label_Coverage.png", label: "Salmonella Model - Label coverage distribution" },
+        { file: "results/Staphylococcus Aureus/Label_Coverage.png", label: "S. Aureus Model - Label coverage distribution" },
+
+        { file: "results/Salmonella Enterica/8-mer/Confusion Matrices/Confusion_Matrix_Amoxicillin-Clavulanic acid.png",
+            label: "Salmonella Model - Amoxicillin-Clavulanic acid Confusion Matrix" },
+        { file: "results/Salmonella Enterica/8-mer/Confusion Matrices/Confusion_Matrix_Ampicillin.png",
+            label: "Salmonella Model - Ampicillin Confusion Matrix" },
+        { file: "results/Salmonella Enterica/8-mer/Confusion Matrices/Confusion_Matrix_Cefoxitin.png",
+            label: "Salmonella Model - Cefoxitin Confusion Matrix" },
+        { file: "results/Salmonella Enterica/8-mer/Confusion Matrices/Confusion_Matrix_Ceftiofur.png",
+            label: "Salmonella Model - Ceftiofur Confusion Matrix" },
+        { file: "results/Salmonella Enterica/8-mer/Confusion Matrices/Confusion_Matrix_Ceftriaxone.png",
+            label: "Salmonella Model - Ceftriaxone Confusion Matrix" },
+        { file: "results/Salmonella Enterica/8-mer/Confusion Matrices/Confusion_Matrix_Gentamicin.png",
+            label: "Salmonella Model - Gentamicin Confusion Matrix" },
+        { file: "results/Salmonella Enterica/8-mer/Confusion Matrices/Confusion_Matrix_Tetracycline.png",
+            label: "Salmonella Model - Tetracycline Confusion Matrix" },
+
+        { file: "results/Staphylococcus Aureus/Confusion Matrices/Confusion_Matrix_Ciprofloxacin.png",
+            label: "S. Aureus Model - Ciprofloxacin Confusion Matrix" },
+        { file: "results/Staphylococcus Aureus/Confusion Matrices/Confusion_Matrix_Clindamycin.png",
+            label: "S. Aureus Model - Clindamycin Confusion Matrix" },
+        { file: "results/Staphylococcus Aureus/Confusion Matrices/Confusion_Matrix_Erythromycin.png",
+            label: "S. Aureus Model - Erythromyci Confusion Matrix" },
+        { file: "results/Staphylococcus Aureus/Confusion Matrices/Confusion_Matrix_Methicillin.png",
+            label: "S. Aureus Model - Methicillin Confusion Matrix" },
+        { file: "results/Staphylococcus Aureus/Confusion Matrices/Confusion_Matrix_Penicillin.png",
+            label: "S. Aureus Model - Penicillin Confusion Matrix" },
+      ];
+      
+      const resultsContainer = document.getElementById("results-images");
+      resultsFigures.forEach((img) => {
+        const div = document.createElement("div");
+        div.classList.add("image-item");
+        div.innerHTML = `
+          <img src="${img.file}" alt="${img.label}" />
+          <p class="image-label">${img.label}</p>
+        `;
+        resultsContainer.appendChild(div);
+      });
+
+      // Error handling for missing images
+      document.addEventListener('DOMContentLoaded', function() {
+        const images = document.querySelectorAll('img');
+        images.forEach(img => {
+          img.onerror = function() {
+            this.style.display = 'none';
+            const parent = this.parentElement;
+            if (parent && parent.classList.contains('image-item')) {
+              const placeholder = document.createElement('div');
+              placeholder.style.cssText = `
+                width: 100%;
+                height: 300px;
+                background: linear-gradient(45deg, #f0f0f0 25%, #e0e0e0 25%, #e0e0e0 50%, #f0f0f0 50%, #f0f0f0 75%, #e0e0e0 75%, #e0e0e0);
+                background-size: 20px 20px;
+                border: 1px solid var(--border-color);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--text-secondary);
+                font-style: italic;
+              `;
+              placeholder.textContent = 'Figure will be available upon publication';
+              parent.insertBefore(placeholder, this);
+            }
+          };
+        });
+      });
+    </script>
+</body>
+</html>

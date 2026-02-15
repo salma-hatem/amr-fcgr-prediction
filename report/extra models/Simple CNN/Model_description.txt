@@ -1,0 +1,30 @@
+Input: (1, H, W)  → single-channel FCGR image
+
+   ┌─────────────┐
+   │ Conv2D 32   │ 3x3, padding=1
+   │ BatchNorm32 │
+   │ ReLU        │
+   │ MaxPool2D   │ 2x2
+   └─────────────┘
+          │
+   ┌─────────────┐
+   │ Conv2D 64   │ 3x3, padding=1
+   │ BatchNorm64 │
+   │ ReLU        │
+   │ MaxPool2D   │ 2x2
+   └─────────────┘
+          │
+   ┌─────────────┐
+   │ Conv2D 128  │ 3x3, padding=1
+   │ BatchNorm128│
+   │ ReLU        │
+   │ AdaptiveAvg │ 1x1
+   └─────────────┘
+          │
+      Flatten
+          │
+   ┌─────────────┐
+   │ Linear      │ → num_classes
+   └─────────────┘
+          │
+      Output logits
