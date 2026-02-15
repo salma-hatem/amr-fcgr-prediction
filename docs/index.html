@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1546,6 +1547,127 @@
                 </div>
             </div>
         </div>
+      </div>
+
+      <!-- Results Comparison -->
+      <div class="model-section general">
+        <div class="model-title general">
+          <span>Models Comparison Summary</span>
+          <span class="model-badge general">Supporting Models</span>
+        </div>
+
+        <div class="figure-container">
+            <h4>Model Comparison – Salmonella FCGR Models</h4>
+            <div class="table-wrapper">
+                <div class="table-scrollable">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Balanced Accuracy</th>
+                                <th>Precision</th>
+                                <th>Recall</th>
+                                <th>ROC AUC</th>
+                                <th>MCC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>7-mer FCGR</td>
+                                <td>0.87</td>
+                                <td>0.94</td>
+                                <td>0.92</td>
+                                <td>0.94</td>
+                                <td>0.63</td>
+                            </tr>
+                            <tr>
+                                <td>8-mer FCGR</td>
+                                <td>0.86</td>
+                                <td>0.95</td>
+                                <td>0.94</td>
+                                <td>0.94</td>
+                                <td>0.73</td>
+                            </tr>
+                            <tr>
+                                <td>6-mer FCGR</td>
+                                <td>0.84</td>
+                                <td>0.90</td>
+                                <td>0.92</td>
+                                <td>0.90</td>
+                                <td>0.56</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th>Salmonella 8-mer ResNet (Main Model)</th>
+                                <th>0.86</th>
+                                <th>0.95</th>
+                                <th>0.94</th>
+                                <th>0.94</th>
+                                <th>0.73</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="figure-container">
+            <h4>Model Comparison – Architectures / Species</h4>
+            <div class="table-wrapper">
+                <div class="table-scrollable">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Balanced Accuracy</th>
+                                <th>Precision</th>
+                                <th>Recall</th>
+                                <th>ROC AUC</th>
+                                <th>MCC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>EfficientNet</td>
+                                <td>0.85</td>
+                                <td>0.93</td>
+                                <td>0.90</td>
+                                <td>0.92</td>
+                                <td>0.58</td>
+                            </tr>
+                            <tr>
+                                <td>Staphylococcus Aureus Model</td>
+                                <td>0.74</td>
+                                <td>0.85</td>
+                                <td>0.78</td>
+                                <td>0.83</td>
+                                <td>0.44</td>
+                            </tr>
+                            <tr>
+                                <td>Simple CNN</td>
+                                <td>0.69</td>
+                                <td>0.93</td>
+                                <td>0.52</td>
+                                <td>0.81</td>
+                                <td>0.26</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th>Salmonella 8-mer ResNet (Main Model)</th>
+                                <th>0.86</th>
+                                <th>0.95</th>
+                                <th>0.94</th>
+                                <th>0.94</th>
+                                <th>0.73</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
       </div>
 
     
